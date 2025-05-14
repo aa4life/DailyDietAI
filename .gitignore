@@ -1,0 +1,79 @@
+# Python 虛擬環境
+.venv/
+venv/
+env/
+
+# Python 編譯檔案
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+
+# 編輯器與系統檔案
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# 環境變數與敏感資訊
+.env
+*.env
+secrets.json
+*.key
+*.pem
+
+# 資料庫
+*.sqlite3
+*.db
+migrations/
+
+# 測試與日誌
+*.log
+coverage/
+*.cache
+.pytest_cache/
+htmlcov/
+
+# Python 依賴
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+*.whl
+
+# Flask 特定
+instance/
+*.pid
+
+# Django 特定
+*.sql
+*.dump
+static/
+media/
+*.bak
+manage.py.local
+
+# Vue.js 特定
+node_modules/
+dist/
+.vuepress/
+*.map
+*.tsbuildinfo
+npm-debug.log
+yarn-error.log
+.cache/
+.vite/
+
+# Web 構建與依賴（通用）
+staticfiles/
+public/
+assets/build/
+*.min.js
+*.min.css
+
+# 其他臨時檔案
+*.tmp
+*.bak
+*.swp
+*~
