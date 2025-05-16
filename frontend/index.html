@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <!-- ① Popper (floating-vue 需要) -->
+  <script src="https://unpkg.com/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+  <script> window.PopperCore = window.Popper; </script>
+  <!-- ② Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- ③ v-calendar 3.1 IIFE 版 -->
+  <!--   ✔ 若用 unpkg： -->
+  <script src="https://unpkg.com/v-calendar@3.1.2/dist/iife/index.js"></script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>健康管理系統</title>
+  <style>
+    /* === 您原本的樣式照搬 === */
+    body { font-family: sans-serif; margin: 20px; background-color:#f4f4f4; color:#333; }
+    #app { max-width:800px; margin:auto; background:#fff; padding:20px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,.1); }
+    .container { margin-bottom:30px; padding:20px; border:1px solid #ddd; border-radius:5px; }
+    h2 { color:#007bff; border-bottom:2px solid #007bff; padding-bottom:10px; }
+    h3 { color:#555; margin-top:20px; }
+    label { display:block; margin-top:10px; font-weight:bold; }
+    input[type="text"], input[type="number"], input[type="date"], select {
+      width:calc(100% - 22px); padding:10px; margin-top:5px;
+      border:1px solid #ccc; border-radius:4px; box-sizing:border-box;
+    }
+    button { background:#007bff; color:#fff; padding:10px 15px; border:none; border-radius:4px;
+      cursor:pointer; font-size:16px; margin-top:15px; }
+    button:hover { background:#0056b3; }
+    button:disabled { background:#ccc; cursor:not-allowed; }
+    .message { padding:10px; margin-top:15px; border-radius:4px; }
+    .success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+    .error   { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+    .info-display { background:#e9ecef; padding:15px; border-radius:5px; margin-top:10px; }
+    .info-display p { margin:5px 0; }
+    .loading { font-style:italic; color:#555; }
+
+    /* === 日曆標色 === */
+    .vc-day-content.has-record {          /* 已填寫 → 綠色 */
+      background:#28a745 !important;
+      color:#fff !important;
+    }
+  </style>
+</head>
+
+<body>
+<div id="app">
+  <h1>健康管理系統</h1>
+
+  <div class="message" v-if="messageText" :class="messageType">{{ messageText }}</div>
+
+  <!-- ===== 使用者基本資料 ===== -->
+  <div class="container">
+    <div class="container">
+      <h2>選擇使用者</h2>
+      <select v-model="selectedUserId" @change="onUserSelect">
+        <option :value="null">➕ 新增使用者</option>
+        <option v-for="u in users" :value="u.id">
+          {{ u.nickname || `User ${u.id}` }}
+        </option>
+      </select>
+    </div>
+    <h2 @click="toggleProfileForm" style="cursor:pointer;">
+      使用者基本資料
+      <span v-if="showProfileForm">▼</span>
+      <span v-else>▲</span>
+    </h2>
+    <div v-show="showProfileForm">
+      <form @submit.prevent="saveUserProfile">
+          <div>
+              <label for="nickname">暱稱:</label>
+              <input type="text" id="nickname" v-model="userForm.nickname" placeholder="選填">
+          </div>
+          <div>
+              <label for="height">身高 (cm):</label>
+              <input type="number" id="height" v-model.number="userForm.height_cm" required step="0.1">
+          </div>
+          <div>
+              <label for="weight">體重 (kg):</label>
+              <input type="number" id="weight" v-model.number="userForm.weight_kg" required step="0.1">
+          </div>
+          <div>
+              <label for="age">年齡 (歲):</label>
+              <input type="number" id="age" v-model.number="userForm.age" required>
+          </div>
+          <div>
+              <label for="gender">性別:</label>
+              <select id="gender" v-model="userForm.gender" required>
+                  <option value="male">男性</option>
+                  <option value="female">女性</option>
+                  <option value="other">其他</option>
+              </select>
+          </div>
+          <div>
+              <label for="goal">目標:</label>
+              <select id="goal" v-model="userForm.goal" required>
+                  <option value="lose_fat">減脂</option>
+                  <option value="maintain">維持</option>
+                  <option value="gain_muscle">增肌</option>
+              </select>
+          </div>
+          <button type="submit" :disabled="isLoadingUser">
+              {{ userId ? '更新基本資料' : '儲存基本資料' }}
+              <span v-if="isLoadingUser"> (處理中...)</span>
+          </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== 每日記錄 ===== -->
+  <div class="container" v-if="userId">
+    <!-- ── 新增：日曆元件在表單頂部 ── -->
+    <v-calendar
+      is-expanded
+      :attributes="calendarAttrs"
+      @dayclick="onDayClick"
+      style="margin-bottom:20px;"
+    ></v-calendar>
+
+    <h2>每日記錄</h2>
+    <form @submit.prevent="submitDailyRecord">
+        <div>
+            <label for="date">日期:</label>
+            <input type="date" id="date" v-model="dailyRecordForm.record_date" required>
+        </div>
+        <div>
+            <label for="calories_consumed">攝取總熱量 (kcal):</label>
+            <input type="number" id="calories_consumed" v-model.number="dailyRecordForm.calories_consumed" required min="0">
+        </div>
+        <div>
+            <label for="protein">蛋白質 (g):</label>
+            <input type="number" id="protein" v-model.number="dailyRecordForm.protein_g" required min="0" step="0.1">
+        </div>
+        <div>
+            <label for="fat">脂肪 (g):</label>
+            <input type="number" id="fat" v-model.number="dailyRecordForm.fat_g" required min="0" step="0.1">
+        </div>
+        <div>
+            <label for="carbs">碳水化合物 (g):</label>
+            <input type="number" id="carbs" v-model.number="dailyRecordForm.carbs_g" required min="0" step="0.1">
+        </div>
+        <div>
+            <label for="calories_burned_exercise">額外運動消耗熱量 (kcal):</label>
+            <input type="number" id="calories_burned_exercise" v-model.number="dailyRecordForm.calories_burned_exercise" min="0">
+        </div>
+        <button type="submit" :disabled="isLoadingRecord || isLoadingSummary">
+            提交每日記錄並獲取建議
+            <span v-if="isLoadingRecord || isLoadingSummary"> (處理中...)</span>
+        </button>
+    </form>
+  </div>
+  <div v-else>
+    <p>請先儲存您的基本資料，才能開始每日記錄。</p>
+  </div>
+
+  <!-- ===== 分析結果 ===== -->
+  <div class="container" v-if="dailySummary.bmr">
+        <h2>分析結果與建議</h2>
+        <div class="info-display">
+            <p><strong>基礎代謝率 (BMR):</strong> {{ dailySummary.bmr }} kcal</p>
+            <p><strong>建議每日熱量攝取:</strong> {{ dailySummary.recommended_daily_calories }} kcal</p>
+            <p><strong>本日熱量平衡:</strong> {{ dailySummary.calorie_balance }} kcal</p>
+        </div>
+        <h3>AI 營養師建議:</h3>
+        <div class="info-display" v-if="!isLoadingSummary && dailySummary.llm_feedback"> 
+            <p v-html="dailySummary.llm_feedback"></p>
+        </div>
+        <div v-if="isLoadingSummary" class="loading">
+            正在獲取 AI 建議...
+        </div>
+    </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

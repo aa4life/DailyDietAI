@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+python-dotenv
+google-generativeai
+# 如果未來使用 PostgreSQL, 需要 psycopg2-binary
+# psycopg2-binary

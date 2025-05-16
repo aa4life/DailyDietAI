@@ -77,3 +77,4 @@ assets/build/
 *.bak
 *.swp
 *~
+.aider*
